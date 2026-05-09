@@ -31,6 +31,7 @@ variable "rds" {
       db_pass = string
     }))
   })
+  sensitive = true
 }
 
 variable "aws_sqs_queue_name" {
@@ -41,7 +42,6 @@ variable "aws_dynamodb_table_name" {
   description = "Nome da tabela DynamoDB"
   type        = string
 }
-
 
 variable "aws_eks_cluster_version" {
   type = string

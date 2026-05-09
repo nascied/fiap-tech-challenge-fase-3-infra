@@ -39,7 +39,7 @@ jobs:
       TF_INPUT: false
       TF_BACKEND_BUCKET: ${{ secrets.TF_BACKEND_BUCKET }}
       TF_BACKEND_KEY: ${{ secrets.TF_BACKEND_KEY }}
-      TF_BACKEND_REGION: ${{ secrets.TF_BACKEND_REGION }}
+      TF_BACKEND_REGION: ${{ secrets.AWS_REGION }}
       TERRAFORM_TFVARS: ${{ secrets.TERRAFORM_TFVARS }}
 
     steps:
@@ -49,10 +49,10 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      - name: Setup TFLint
+      - name: Configura TFLint
         uses: terraform-linters/setup-tflint@v4
 
-      - name: Create terraform.tfvars
+      - name: Cria terraform.tfvars
         run: printf "%s" "$TERRAFORM_TFVARS" > terraform.tfvars
 
       - name: Lint Terraform
@@ -68,7 +68,10 @@ jobs:
           tflint --init
           tflint --recursive
 
-      - name: Security scan Terraform
+      - name: Realizando teste unitários
+        run: terraform test
+
+      - name: Realizando validação de código 
         uses: bridgecrewio/checkov-action@v12
         with:
           directory: iac/terraform

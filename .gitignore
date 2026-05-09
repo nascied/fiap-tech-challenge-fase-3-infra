@@ -5,7 +5,7 @@
 # Terraform working directories and local cache
 **/.terraform/
 .terraform/
-
+**/terraform/bootstrap-backend/.terraform/
 # Terraform state files
 *.tfstate
 *.tfstate.*
@@ -51,3 +51,4 @@ Thumbs.db
 *~
 .vscode/
 .idea/
+.codex
