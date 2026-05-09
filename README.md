@@ -1,4 +1,4 @@
-﻿# FIAP Tech Challenge - Fase 3 | Parte do Renan (GitOps + ArgoCD)
+﻿# FIAP Tech Challenge - Fase 3 | Renan (GitOps + ArgoCD)
 
 Esta parte do projeto e responsavel pelo **deploy automatizado** dos microsservicos no cluster EKS usando **ArgoCD** (GitOps).
 
