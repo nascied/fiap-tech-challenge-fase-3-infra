@@ -1,0 +1,91 @@
+name: Terraform IaC
+
+on:
+  pull_request:
+    paths:
+      - "iac/terraform/**"
+  push:
+    branches:
+      - main
+    paths:
+      - "iac/terraform/**"
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Ação Terraform"
+        required: true
+        default: "plan"
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
+
+jobs:
+  terraform:
+    name: Terraform
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: iac/terraform
+
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+      TF_IN_AUTOMATION: true
+      TF_INPUT: false
+      TF_BACKEND_BUCKET: ${{ secrets.TF_BACKEND_BUCKET }}
+      TF_BACKEND_KEY: ${{ secrets.TF_BACKEND_KEY }}
+      TF_BACKEND_REGION: ${{ secrets.AWS_REGION }}
+      TERRAFORM_TFVARS: ${{ secrets.TERRAFORM_TFVARS }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Configura TFLint
+        uses: terraform-linters/setup-tflint@v4
+
+      - name: Cria terraform.tfvars
+        run: printf "%s" "$TERRAFORM_TFVARS" > terraform.tfvars
+
+      - name: Lint Terraform
+        run: |
+          terraform fmt -check -recursive
+          terraform init \
+            -backend-config="bucket=$TF_BACKEND_BUCKET" \
+            -backend-config="key=$TF_BACKEND_KEY" \
+            -backend-config="region=$TF_BACKEND_REGION" \
+            -backend-config="encrypt=true" \
+            -backend-config="use_lockfile=true"
+          terraform validate
+          tflint --init
+          tflint --recursive
+
+      - name: Realizando teste unitários
+        run: terraform test
+
+      - name: Realizando validação de código 
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: iac/terraform
+          framework: terraform
+          soft_fail: false
+
+      - name: Terraform plan
+        if: github.event_name == 'pull_request' || github.event_name == 'push' || github.event.inputs.action == 'plan' || github.event.inputs.action == 'apply'
+        run: terraform plan -out=tfplan
+
+      - name: Terraform apply
+        if: github.event_name == 'push' || github.event.inputs.action == 'apply'
+        run: terraform apply -auto-approve tfplan
+
+      - name: Terraform destroy
+        if: github.event.inputs.action == 'destroy'
+        run: terraform destroy -auto-approve
