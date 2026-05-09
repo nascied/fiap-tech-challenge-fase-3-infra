@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: targeting
+  namespace: default
+  labels:
+    app: targeting
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: targeting
+  template:
+    metadata:
+      labels:
+        app: targeting
+    spec:
+      containers:
+        - name: targeting
+          image: ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/targeting:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
