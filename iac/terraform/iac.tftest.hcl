@@ -1,3 +1,5 @@
+mock_provider "aws" {}
+
 variables {
   aws_vpc = {
     name                     = "fiap-tc-f3-vpc"
