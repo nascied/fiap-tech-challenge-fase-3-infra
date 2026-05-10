@@ -50,11 +50,13 @@ output "aws_db_instance_port" {
 output "aws_db_instance_name" {
   description = "Database name"
   value       = module.db.aws_db_instance_name
+  sensitive   = true
 }
 
 output "aws_db_instance_master_user" {
   description = "Master username"
   value       = module.db.aws_db_instance_master_user
+  sensitive   = true
 }
 
 output "aws_db_instance_connection_strings" {

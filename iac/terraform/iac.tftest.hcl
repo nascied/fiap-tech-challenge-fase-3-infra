@@ -109,7 +109,7 @@ run "plan_outputs_shape" {
   }
 
   assert {
-    condition     = output.aws_db_instance_name[0] == "auth_db"
+    condition     = nonsensitive(output.aws_db_instance_name)[0] == "auth_db"
     error_message = "O primeiro nome de banco retornado deve ser auth_db."
   }
 }
