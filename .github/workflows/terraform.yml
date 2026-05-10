@@ -55,7 +55,7 @@ jobs:
       - name: Lint Terraform
         run: |
           terraform fmt -check -recursive
-          terraform init
+          terraform init -upgrade
           terraform validate
           tflint --init
           tflint --recursive
