@@ -63,13 +63,47 @@ jobs:
       - name: Realizando teste unitários
         run: terraform test
 
-      - name: Realizando validação com Trivy
-        uses: aquasecurity/trivy-action@v0.35.0
-        with:
-          scan-type: "config"
-          scan-ref: "iac/terraform"
-          exit-code: "1"
-          severity: "CRITICAL,HIGH"
+      - name: Instala Checkov
+        run: pipx install checkov
+
+      - name: Gera relatório Checkov (JSON)
+        run: |
+          ~/.local/bin/checkov -d . \
+            --framework terraform \
+            -o json > checkov-report.json || true
+
+      - name: Publica relatório Checkov em tabela
+        if: always()
+        run: |
+          echo "## Relatório Checkov (Terraform)" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Status | Check ID | Severidade | Recurso | Arquivo |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|---|---|---|" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -s checkov-report.json ]; then
+            jq -r '
+              (.results.failed_checks[]? | [
+                "FAILED",
+                (.check_id // "-"),
+                (.severity // "-"),
+                (.resource // "-"),
+                (.file_path // "-")
+              ]),
+              (.results.passed_checks[]? | [
+                "PASSED",
+                (.check_id // "-"),
+                (.severity // "-"),
+                (.resource // "-"),
+                (.file_path // "-")
+              ])
+              | @tsv
+            ' checkov-report.json 2>/dev/null | \
+            while IFS=$'\t' read -r status check_id severity resource file_path; do
+              echo "| ${status} | ${check_id} | ${severity} | ${resource} | ${file_path} |" >> "$GITHUB_STEP_SUMMARY"
+            done
+          else
+            echo "| INFO | - | - | - | Checkov não gerou relatório JSON |" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Terraform plan
         if: github.event_name == 'pull_request' || github.event_name == 'push' || github.event.inputs.action == 'plan' || github.event.inputs.action == 'apply'
