@@ -37,9 +37,6 @@ jobs:
       AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
       TF_IN_AUTOMATION: true
       TF_INPUT: false
-      TF_BACKEND_BUCKET: ${{ secrets.TF_BACKEND_BUCKET }}
-      TF_BACKEND_KEY: ${{ secrets.TF_BACKEND_KEY }}
-      TF_BACKEND_REGION: ${{ secrets.AWS_REGION }}
       TERRAFORM_TFVARS: ${{ secrets.TERRAFORM_TFVARS }}
 
     steps:
@@ -58,12 +55,7 @@ jobs:
       - name: Lint Terraform
         run: |
           terraform fmt -check -recursive
-          terraform init \
-            -backend-config="bucket=$TF_BACKEND_BUCKET" \
-            -backend-config="key=$TF_BACKEND_KEY" \
-            -backend-config="region=$TF_BACKEND_REGION" \
-            -backend-config="encrypt=true" \
-            -backend-config="use_lockfile=true"
+          terraform init
           terraform validate
           tflint --init
           tflint --recursive
