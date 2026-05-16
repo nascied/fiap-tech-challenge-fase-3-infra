@@ -79,7 +79,9 @@ jobs:
           echo "DEPLOY_ENV=${ENV}" >> "$GITHUB_ENV"
 
       - name: Mostra arquivo tfvars selecionado
-        run: echo "Ambiente: ${DEPLOY_ENV} | Arquivo: ${TF_VARS_FILE}"
+        run: |
+          echo "Ambiente: ${DEPLOY_ENV}"
+          echo "Arquivo: ${TF_VARS_FILE}"
 
       - name: Lint Terraform
         run: |
