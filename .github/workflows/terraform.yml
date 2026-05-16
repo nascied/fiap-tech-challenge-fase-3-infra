@@ -1,16 +1,16 @@
 name: Terraform IaC
 
 on:
-  pull_request:
-    branches:
-      - main
-    paths:
-      - "iac/terraform/**"
-  push:
-    branches:
-      - dev
-    paths:
-      - "iac/terraform/**"
+  # pull_request:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - "iac/terraform/**"
+  # push:
+  #   branches:
+  #     - dev
+  #   paths:
+  #     - "iac/terraform/**"
   workflow_dispatch:
     inputs:
       action:
