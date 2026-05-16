@@ -84,7 +84,7 @@ jobs:
       - name: Lint Terraform
         run: |
           terraform fmt -check -recursive
-          terraform init -upgrade
+          terraform init -upgrade -backend-config="backends/${DEPLOY_ENV}.tfbackend"
           terraform validate
           tflint --init
           tflint --recursive
