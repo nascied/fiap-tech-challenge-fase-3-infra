@@ -9,6 +9,6 @@ resource "aws_vpc" "this" {
 
 
   tags = {
-    Name = "${var.aws_vpc.name}"
+    Name = var.aws_vpc.name
   }
 }

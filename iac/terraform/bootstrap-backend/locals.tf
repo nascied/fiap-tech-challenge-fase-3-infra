@@ -1,3 +1,3 @@
 locals {
-  s3_prefix_name = "fiap-tc-f3"
+  resource_prefix_name = "fiap-tc-f3"
 }
