@@ -39,7 +39,6 @@ jobs:
       AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
       TF_IN_AUTOMATION: true
       TF_INPUT: false
-      TERRAFORM_TFVARS: ${{ secrets.TERRAFORM_TFVARS }}
 
     steps:
       - name: Checkout
@@ -51,8 +50,36 @@ jobs:
       - name: Configura TFLint
         uses: terraform-linters/setup-tflint@v4
 
-      - name: Cria terraform.tfvars
-        run: printf "%s" "$TERRAFORM_TFVARS" > terraform.tfvars
+      - name: Define arquivo tfvars por branch
+        run: |
+          # pull_request usa GITHUB_BASE_REF (branch de destino do PR)
+          # push e workflow_dispatch usam GITHUB_REF_NAME (branch atual)
+          if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+            BRANCH="${GITHUB_BASE_REF}"
+          else
+            BRANCH="${GITHUB_REF_NAME}"
+          fi
+
+          echo "Branch detectada: ${BRANCH}"
+
+          case "${BRANCH}" in
+            dev)
+              ENV="dev"
+              ;;
+            main)
+              ENV="prd"
+              ;;
+            *)
+              echo "❌ Branch não suportada para deploy: ${BRANCH}"
+              exit 1
+              ;;
+          esac
+
+          echo "TF_VARS_FILE=terraform.${ENV}.tfvars" >> "$GITHUB_ENV"
+          echo "DEPLOY_ENV=${ENV}" >> "$GITHUB_ENV"
+
+      - name: Mostra arquivo tfvars selecionado
+        run: echo "Ambiente: ${DEPLOY_ENV} | Arquivo: ${TF_VARS_FILE}"
 
       - name: Lint Terraform
         run: |
@@ -62,7 +89,7 @@ jobs:
           tflint --init
           tflint --recursive
 
-      - name: Realizando teste unitários
+      - name: Testes unitários
         run: terraform test
 
       - name: Instala Checkov
@@ -72,27 +99,39 @@ jobs:
         run: |
           ~/.local/bin/checkov -d . \
             --framework terraform \
-            -o json > checkov-report.json || true
+            -o json > checkov-report.json || CHECKOV_EXIT=$?
+
+          # Persiste o exit code para exibição no summary (não quebra a pipeline)
+          echo "CHECKOV_EXIT=${CHECKOV_EXIT:-0}" >> "$GITHUB_ENV"
 
       - name: Publica relatório Checkov em tabela
         if: always()
         run: |
-          echo "## Relatório Checkov (Terraform)" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Relatório Checkov (Terraform) — Ambiente: ${DEPLOY_ENV}" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "${CHECKOV_EXIT}" != "0" ]; then
+            echo "⚠️ **Checkov encontrou findings — revisar antes do apply**" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "✅ **Nenhum finding detectado pelo Checkov**" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
           echo "| Status | Check ID | Severidade | Recurso | Arquivo |" >> "$GITHUB_STEP_SUMMARY"
           echo "|---|---|---|---|---|" >> "$GITHUB_STEP_SUMMARY"
 
           if [ -s checkov-report.json ]; then
             jq -r '
               (.results.failed_checks[]? | [
-                "FAILED",
+                "❌ FAILED",
                 (.check_id // "-"),
                 (.severity // "-"),
                 (.resource // "-"),
                 (.file_path // "-")
               ]),
               (.results.passed_checks[]? | [
-                "PASSED",
+                "✅ PASSED",
                 (.check_id // "-"),
                 (.severity // "-"),
                 (.resource // "-"),
@@ -107,14 +146,20 @@ jobs:
             echo "| INFO | - | - | - | Checkov não gerou relatório JSON |" >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Terraform plan
-        if: github.event_name == 'pull_request' || github.event_name == 'push' || github.event.inputs.action == 'plan' || github.event.inputs.action == 'apply'
-        run: terraform plan -var-file=terraform.tfvars -out=tfplan
+      - name: Terraform Plan
+        if: |
+          github.event_name == 'pull_request' ||
+          github.event_name == 'push'         ||
+          github.event.inputs.action == 'plan'  ||
+          github.event.inputs.action == 'apply'
+        run: terraform plan -var-file="${TF_VARS_FILE}" -out=tfplan
 
-      - name: Terraform apply
-        if: github.event_name == 'push' || github.event.inputs.action == 'apply'
+      - name: Terraform Apply
+        # Somente via workflow_dispatch — sem apply automático no push
+        if: github.event.inputs.action == 'apply'
         run: terraform apply -auto-approve tfplan
 
-      - name: Terraform destroy
+      - name: Terraform Destroy
+        # Somente via workflow_dispatch com branch como fonte da verdade do ambiente
         if: github.event.inputs.action == 'destroy'
-        run: terraform destroy -var-file=terraform.tfvars -auto-approve
+        run: terraform destroy -var-file="${TF_VARS_FILE}" -auto-approve
