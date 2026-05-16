@@ -43,14 +43,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Debug credenciais (temporário)
-        run: |
-          echo "ACCESS_KEY definida: ${{ secrets.AWS_ACCESS_KEY_ID != '' }}"
-          echo "SECRET_KEY definida: ${{ secrets.AWS_SECRET_ACCESS_KEY != '' }}"
-          echo "SESSION_TOKEN definida: ${{ secrets.AWS_SESSION_TOKEN != '' }}"
-          echo "Primeiros chars ACCESS_KEY: $(echo '${{ secrets.AWS_ACCESS_KEY_ID }}' | cut -c1-4)"
-      
+     
       - name: Configura credenciais AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -162,7 +155,11 @@ jobs:
           else
             echo "| INFO | - | - | - | Checkov não gerou relatório JSON |" >> "$GITHUB_STEP_SUMMARY"
           fi
-
+      - name: mostra o diretório atual e seu conteúdo
+        run: |
+          echo "$(pwd)"
+          ls -l
+          
       - name: Terraform Plan
         if: >-
           github.event_name == 'pull_request' ||
