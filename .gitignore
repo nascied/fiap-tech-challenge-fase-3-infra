@@ -7,6 +7,7 @@
 .terraform/
 **/terraform/bootstrap-backend/.terraform/
 **/terraform/bootstrap-backend/terraform.tfstate
+**/terraform/bootstrap-backend/terraform.tfvars
 **/terraform/bootstrap-backend/terraform.tfstate.backup
 
 # Terraform state files
@@ -16,7 +17,6 @@ terraform.tfstate
 terraform.tfstate.backup
 
 # Terraform variable files that may contain secrets
-*.tfvars
 *.tfvars.json
 !*.tfvars.example
 !*.tfvars.sample
