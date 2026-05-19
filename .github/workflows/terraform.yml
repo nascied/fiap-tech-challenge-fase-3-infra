@@ -1,16 +1,16 @@
 name: Terraform IaC
 
 on:
-  pull_request:
-    branches:
-      - main
-    paths:
-      - "iac/terraform/**"
-  push:
-    branches:
-      - dev
-    paths:
-      - "iac/terraform/**"
+  # pull_request:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - "iac/terraform/**"
+  # push:
+  #   branches:
+  #     - dev
+  #   paths:
+  #     - "iac/terraform/**"
   workflow_dispatch:
     inputs:
       action:
@@ -43,14 +43,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Debug credenciais (temporário)
-        run: |
-          echo "ACCESS_KEY definida: ${{ secrets.AWS_ACCESS_KEY_ID != '' }}"
-          echo "SECRET_KEY definida: ${{ secrets.AWS_SECRET_ACCESS_KEY != '' }}"
-          echo "SESSION_TOKEN definida: ${{ secrets.AWS_SESSION_TOKEN != '' }}"
-          echo "Primeiros chars ACCESS_KEY: $(echo '${{ secrets.AWS_ACCESS_KEY_ID }}' | cut -c1-4)"
-      
+     
       - name: Configura credenciais AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -109,17 +102,15 @@ jobs:
       - name: Testes unitários
         run: terraform test
 
-      - name: Instala Checkov
-        run: pipx install checkov
-
-      - name: Gera relatório Checkov (JSON)
-        run: |
-          ~/.local/bin/checkov -d . \
-            --framework terraform \
-            -o json > checkov-report.json || CHECKOV_EXIT=$?
-
-          # Persiste o exit code para exibição no summary (não quebra a pipeline)
-          echo "CHECKOV_EXIT=${CHECKOV_EXIT:-0}" >> "$GITHUB_ENV"
+      - name: Gera relatório Checkov
+        id: checkov
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: iac/terraform
+          framework: terraform
+          output_format: cli,sarif,json
+          output_file_path: console,results.sarif,checkov-report.json
+          soft_fail: true
 
       - name: Publica relatório Checkov em tabela
         if: always()
@@ -127,18 +118,20 @@ jobs:
           echo "## Relatório Checkov (Terraform) — Ambiente: ${DEPLOY_ENV}" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
 
-          if [ "${CHECKOV_EXIT}" != "0" ]; then
-            echo "⚠️ **Checkov encontrou findings — revisar antes do apply**" >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "✅ **Nenhum finding detectado pelo Checkov**" >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-          echo "| Status | Check ID | Severidade | Recurso | Arquivo |" >> "$GITHUB_STEP_SUMMARY"
-          echo "|---|---|---|---|---|" >> "$GITHUB_STEP_SUMMARY"
-
           if [ -s checkov-report.json ]; then
+            FAILED=$(jq '[.results.failed_checks[]?] | length' checkov-report.json 2>/dev/null || echo "0")
+            PASSED=$(jq '[.results.passed_checks[]?] | length' checkov-report.json 2>/dev/null || echo "0")
+
+            if [ "${FAILED}" -gt "0" ]; then
+              echo "⚠️ **${FAILED} finding(s) encontrado(s) — revisar antes do apply**" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "✅ **Nenhum finding detectado — ${PASSED} checks passaram**" >> "$GITHUB_STEP_SUMMARY"
+            fi
+
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Status | Check ID | Severidade | Recurso | Arquivo |" >> "$GITHUB_STEP_SUMMARY"
+            echo "|---|---|---|---|---|" >> "$GITHUB_STEP_SUMMARY"
+
             jq -r '
               (.results.failed_checks[]? | [
                 "❌ FAILED",
@@ -160,7 +153,7 @@ jobs:
               echo "| ${status} | ${check_id} | ${severity} | ${resource} | ${file_path} |" >> "$GITHUB_STEP_SUMMARY"
             done
           else
-            echo "| INFO | - | - | - | Checkov não gerou relatório JSON |" >> "$GITHUB_STEP_SUMMARY"
+            echo "⚠️ **Checkov não gerou relatório JSON**" >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Terraform Plan
