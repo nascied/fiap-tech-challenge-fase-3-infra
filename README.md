@@ -49,21 +49,86 @@ Não fazem parte do escopo deste README:
 ## 📁 Estrutura do Projeto
 
 ```text
-iac/terraform
+├── backends
+│   ├── dev.tfbackend
+│   └── prd.tfbackend
+├── bootstrap-backend
+│   ├── locals.tf
+│   ├── main.tf
+│   ├── output.tf
+│   ├── provider.tf
+│   ├── README.md
+│   ├── required.tf
+│   ├── terraform.tfstate
+│   ├── terraform.tfstate.backup
+│   ├── terraform.tfvars
+│   └── variable.tf
+├── iac.tftest.hcl
 ├── main.tf
+├── modules
+│   ├── dynamodb
+│   │   ├── locals.tf
+│   │   ├── main.tf
+│   │   ├── output.tf
+│   │   ├── README.md
+│   │   ├── variable.tf
+│   │   └── versions.tf
+│   ├── ecr
+│   │   ├── locals.tf
+│   │   ├── main.tf
+│   │   ├── output.tf
+│   │   ├── README.md
+│   │   ├── variable.tf
+│   │   └── versions.tf
+│   ├── eks
+│   │   ├── data.tf
+│   │   ├── locals.tf
+│   │   ├── main.tf
+│   │   ├── output.tf
+│   │   ├── README.md
+│   │   ├── variable.tf
+│   │   └── versions.tf
+│   ├── rds
+│   │   ├── data.tf
+│   │   ├── locals.tf
+│   │   ├── main.tf
+│   │   ├── output.tf
+│   │   ├── README.md
+│   │   ├── variable.tf
+│   │   └── versions.tf
+│   ├── redis
+│   │   ├── locals.tf
+│   │   ├── main.tf
+│   │   ├── output.tf
+│   │   ├── variable.tf
+│   │   └── versions.tf
+│   ├── sqs
+│   │   ├── locals.tf
+│   │   ├── main.tf
+│   │   ├── output.tf
+│   │   ├── README.md
+│   │   ├── variable.tf
+│   │   └── versions.tf
+│   └── vpc
+│       ├── eip.tf
+│       ├── igw.tf
+│       ├── natgateway.tf
+│       ├── output.tf
+│       ├── README.md
+│       ├── rt.tf
+│       ├── subnet.tf
+│       ├── variable.tf
+│       ├── versions.tf
+│       └── vpc.tf
 ├── output.tf
 ├── provider.tf
+├── README.md
 ├── required.tf
-├── variable.tf
-├── terraform.tfvars
-└── modules
-    ├── dynamodb
-    ├── ecr
-    ├── eks
-    ├── rds
-    ├── redis
-    ├── sqs
-    └── vpc
+├── terraform.dev.tfvars
+├── terraform.prd.tfvars
+├── terraform.tfstate
+├── terraform.tfstate.backup
+└── variable.tf
 ```
 
 ## Requisitos
@@ -71,7 +136,7 @@ iac/terraform
 - Terraform instalado.
 - AWS CLI instalado e configurado.
 - Credenciais AWS com permissão para criar os recursos definidos nos módulos.
-- Provider AWS `6.36.0`.
+- Provider AWS `6.44.0`.
 
 Configure as credenciais AWS antes da execução:
 
@@ -164,7 +229,7 @@ rds = {
 }
 ```
 
-## Modelo de Uso
+## Modelo de Uso manual
 
 Acesse o diretório Terraform:
 
@@ -247,20 +312,26 @@ O backend remoto usa S3 com lock nativo por arquivo `.tflock`, habilitado por `u
 
 ### Exemplo de workflow
 
-Crie o arquivo `.github/workflows/terraform.yml` com o fluxo abaixo:
+Crie o arquivo `.github/workflows/terraform.yml` com os detalhes resumido abaixo.:
+
+Workflow manual (`workflow_dispatch`) para Terraform com `action` (`plan|apply|destroy`).
+
+Ele:
+1. Configura AWS, Terraform e TFLint.
+2. Detecta a branch e escolhe ambiente:
+- `dev` -> `terraform.dev.tfvars`
+- `main` -> `terraform.prd.tfvars`
+3. Roda validações (`fmt`, `init` com backend por ambiente, `validate`, `tflint`, `terraform test`) e `Checkov`.
+4. Executa:
+- `plan` (gera `tfplan`)
+- `apply` só manual
+- `destroy` só manual.
+
 
 ```yaml
 name: Terraform IaC
 
 on:
-  pull_request:
-    paths:
-      - "iac/terraform/**"
-  push:
-    branches:
-      - main
-    paths:
-      - "iac/terraform/**"
   workflow_dispatch:
     inputs:
       action:
@@ -282,60 +353,146 @@ jobs:
         working-directory: iac/terraform
 
     env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
-      AWS_REGION: ${{ secrets.AWS_REGION }}
-      AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
-      TF_BACKEND_BUCKET: ${{ secrets.TF_BACKEND_BUCKET }}
-      TF_BACKEND_KEY: ${{ secrets.TF_BACKEND_KEY }}
-      TF_BACKEND_REGION: ${{ secrets.TF_BACKEND_REGION }}
-      TERRAFORM_TFVARS: ${{ secrets.TERRAFORM_TFVARS }}
+      # AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      # AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      # AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+      # AWS_REGION: ${{ secrets.AWS_REGION }}
+      # AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+      TF_IN_AUTOMATION: true
+      TF_INPUT: false
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+     
+      - name: Configura credenciais AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      - name: Setup TFLint
+      - name: Configura TFLint
         uses: terraform-linters/setup-tflint@v4
 
-      - name: Create terraform.tfvars
-        run: printf "%s" "$TERRAFORM_TFVARS" > terraform.tfvars
+      - name: Define arquivo tfvars por branch
+        run: |
+          # pull_request usa GITHUB_BASE_REF (branch de destino do PR)
+          # push e workflow_dispatch usam GITHUB_REF_NAME (branch atual)
+          if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+            BRANCH="${GITHUB_BASE_REF}"
+          else
+            BRANCH="${GITHUB_REF_NAME}"
+          fi
+
+          echo "Branch detectada: ${BRANCH}"
+
+          case "${BRANCH}" in
+            dev)
+              ENV="dev"
+              ;;
+            main)
+              ENV="prd"
+              ;;
+            *)
+              echo "❌ Branch não suportada para deploy: ${BRANCH}"
+              exit 1
+              ;;
+          esac
+
+          echo "TF_VARS_FILE=terraform.${ENV}.tfvars" >> "$GITHUB_ENV"
+          echo "DEPLOY_ENV=${ENV}" >> "$GITHUB_ENV"
+
+      - name: Mostra arquivo tfvars selecionado
+        run: |
+          echo "Ambiente: ${DEPLOY_ENV}"
+          echo "Arquivo: ${TF_VARS_FILE}"
 
       - name: Lint Terraform
         run: |
           terraform fmt -check -recursive
-          terraform init \
-            -backend-config="bucket=$TF_BACKEND_BUCKET" \
-            -backend-config="key=$TF_BACKEND_KEY" \
-            -backend-config="region=$TF_BACKEND_REGION" \
-            -backend-config="encrypt=true" \
-            -backend-config="use_lockfile=true"
+          terraform init -upgrade -backend-config="backends/${DEPLOY_ENV}.tfbackend"
           terraform validate
           tflint --init
           tflint --recursive
 
-      - name: Security scan Terraform
-        uses: bridgecrewio/checkov-action@v12
+      - name: Testes unitários
+        run: terraform test
+
+      - name: Gera relatório Checkov
+        id: checkov
+        uses: bridgecrewio/checkov-action@master
         with:
           directory: iac/terraform
           framework: terraform
-          soft_fail: false
+          output_format: cli,sarif,json
+          output_file_path: console,results.sarif,checkov-report.json
+          soft_fail: true
 
-      - name: Terraform plan
-        if: github.event_name == 'pull_request' || github.event_name == 'push' || github.event.inputs.action == 'plan' || github.event.inputs.action == 'apply'
-        run: terraform plan -out=tfplan
+      - name: Publica relatório Checkov em tabela
+        if: always()
+        run: |
+          echo "## Relatório Checkov (Terraform) — Ambiente: ${DEPLOY_ENV}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Terraform apply
-        if: github.event_name == 'push' || github.event.inputs.action == 'apply'
+          if [ -s checkov-report.json ]; then
+            FAILED=$(jq '[.results.failed_checks[]?] | length' checkov-report.json 2>/dev/null || echo "0")
+            PASSED=$(jq '[.results.passed_checks[]?] | length' checkov-report.json 2>/dev/null || echo "0")
+
+            if [ "${FAILED}" -gt "0" ]; then
+              echo "⚠️ **${FAILED} finding(s) encontrado(s) — revisar antes do apply**" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "✅ **Nenhum finding detectado — ${PASSED} checks passaram**" >> "$GITHUB_STEP_SUMMARY"
+            fi
+
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Status | Check ID | Severidade | Recurso | Arquivo |" >> "$GITHUB_STEP_SUMMARY"
+            echo "|---|---|---|---|---|" >> "$GITHUB_STEP_SUMMARY"
+
+            jq -r '
+              (.results.failed_checks[]? | [
+                "❌ FAILED",
+                (.check_id // "-"),
+                (.severity // "-"),
+                (.resource // "-"),
+                (.file_path // "-")
+              ]),
+              (.results.passed_checks[]? | [
+                "✅ PASSED",
+                (.check_id // "-"),
+                (.severity // "-"),
+                (.resource // "-"),
+                (.file_path // "-")
+              ])
+              | @tsv
+            ' checkov-report.json 2>/dev/null | \
+            while IFS=$'\t' read -r status check_id severity resource file_path; do
+              echo "| ${status} | ${check_id} | ${severity} | ${resource} | ${file_path} |" >> "$GITHUB_STEP_SUMMARY"
+            done
+          else
+            echo "⚠️ **Checkov não gerou relatório JSON**" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Terraform Plan
+        if: >-
+          github.event_name == 'pull_request' ||
+          github.event_name == 'push' ||
+          (github.event_name == 'workflow_dispatch' && (github.event.inputs.action == 'plan' || github.event.inputs.action == 'apply'))
+        run: terraform plan -var-file="${TF_VARS_FILE}" -out=tfplan
+
+      - name: Terraform Apply
+        # Somente via workflow_dispatch — sem apply automático no push
+        if: github.event.inputs.action == 'apply'
         run: terraform apply -auto-approve tfplan
 
-      - name: Terraform destroy
+      - name: Terraform Destroy
+        # Somente via workflow_dispatch com branch como fonte da verdade do ambiente
         if: github.event.inputs.action == 'destroy'
-        run: terraform destroy -auto-approve
+        run: terraform destroy -var-file="${TF_VARS_FILE}" -auto-approve
 ```
 
 ### Recomendações para a esteira
@@ -408,4 +565,3 @@ override.tf
 ## 📄 Licença
 
 Este projeto é apenas para fins educacionais como parte do programa de pós-graduação devops arquitetura Cloud da instituição FIAP.
-~
