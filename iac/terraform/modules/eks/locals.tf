@@ -1,5 +1,5 @@
 locals {
-  resource_prefix_name = "fiap-tc-f3"
+  resource_prefix_name = "fiap-tc-f4"
   aws_eks_add_ons = [
     "kube-proxy",
     "coredns",

@@ -2,21 +2,21 @@ mock_provider "aws" {}
 
 variables {
   aws_vpc = {
-    name                     = "fiap-tc-f3-vpc"
+    name                     = "fiap-tc-f4-vpc"
     cidr_block               = "172.16.0.0/16"
-    internet_gateway_name    = "fiap-tc-f3-igw"
-    nat_gateway_name         = "fiap-tc-f3-ngw"
-    public_route_table_name  = "fiap-tc-f3-public-rt"
-    private_route_table_name = "fiap-tc-f3-private-rt"
+    internet_gateway_name    = "fiap-tc-f4-igw"
+    nat_gateway_name         = "fiap-tc-f4-ngw"
+    public_route_table_name  = "fiap-tc-f4-public-rt"
+    private_route_table_name = "fiap-tc-f4-private-rt"
     public_subnets = [
       {
-        name                    = "fiap-tc-f3-public-subnet-us-east-1a"
+        name                    = "fiap-tc-f4-public-subnet-us-east-1a"
         cidr_block              = "172.16.1.0/24"
         availability_zone       = "us-east-1a"
         map_public_ip_on_launch = true
       },
       {
-        name                    = "fiap-tc-f3-public-subnet-us-east-1b"
+        name                    = "fiap-tc-f4-public-subnet-us-east-1b"
         cidr_block              = "172.16.2.0/24"
         availability_zone       = "us-east-1b"
         map_public_ip_on_launch = true
@@ -24,13 +24,13 @@ variables {
     ]
     private_subnets = [
       {
-        name                    = "fiap-tc-f3-private-subnet-us-east-1a"
+        name                    = "fiap-tc-f4-private-subnet-us-east-1a"
         cidr_block              = "172.16.10.0/24"
         availability_zone       = "us-east-1a"
         map_public_ip_on_launch = false
       },
       {
-        name                    = "fiap-tc-f3-private-subnet-us-east-1b"
+        name                    = "fiap-tc-f4-private-subnet-us-east-1b"
         cidr_block              = "172.16.11.0/24"
         availability_zone       = "us-east-1b"
         map_public_ip_on_launch = false
