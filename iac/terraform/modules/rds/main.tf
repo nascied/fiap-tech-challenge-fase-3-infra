@@ -8,10 +8,11 @@ resource "aws_security_group" "this" {
   vpc_id      = var.aws_db_subnet_group_vpc_id
 
   ingress {
-    from_port   = 5432
-    to_port     = 5432
-    protocol    = "tcp"
-    cidr_blocks = ["172.16.10.0/24", "172.16.11.0/24"]
+    description     = "Acesso do EKS (nodes/pods) ao PostgreSQL"
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [var.eks_security_group_id]
   }
 
   egress {
@@ -76,7 +77,7 @@ resource "aws_db_instance" "this" {
 
   # Redes
   db_subnet_group_name   = aws_db_subnet_group.this.name
-  publicly_accessible    = true # Para acesso local/dev
+  publicly_accessible    = false
   vpc_security_group_ids = [aws_security_group.this.id]
 
   # Tags

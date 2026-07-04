@@ -5,16 +5,6 @@ module "vpc" {
 
 }
 
-module "db" {
-  source = "./modules/rds"
-
-  rds                        = var.rds
-  aws_subnet_ids             = module.vpc.private_subnet_id
-  aws_db_subnet_group_vpc_id = module.vpc.vpc_id
-
-  depends_on = [module.vpc]
-}
-
 module "eks" {
   source = "./modules/eks"
 
@@ -23,6 +13,17 @@ module "eks" {
   aws_eks_cluster_version = var.aws_eks_cluster_version
 
   depends_on = [module.vpc]
+}
+
+module "db" {
+  source = "./modules/rds"
+
+  rds                        = var.rds
+  aws_subnet_ids             = module.vpc.private_subnet_id
+  aws_db_subnet_group_vpc_id = module.vpc.vpc_id
+  eks_security_group_id      = module.eks.aws_eks_cluster_security_group_id
+
+  depends_on = [module.vpc, module.eks]
 }
 
 module "ecr" {
@@ -43,8 +44,10 @@ module "cache" {
   source = "./modules/redis"
 
   subnet_elasticache_group = module.vpc.private_subnet_id
+  aws_vpc_id               = module.vpc.vpc_id
+  eks_security_group_id    = module.eks.aws_eks_cluster_security_group_id
 
-  depends_on = [module.vpc]
+  depends_on = [module.vpc, module.eks]
 }
 
 module "dynamodb" {

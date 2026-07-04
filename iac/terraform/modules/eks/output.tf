@@ -13,3 +13,8 @@ output "aws_eks_cluster_endpoint" {
 output "aws_eks_cluster_platform_version" {
   value = aws_eks_cluster.this.platform_version
 }
+
+output "aws_eks_cluster_security_group_id" {
+  description = "Security group criado automaticamente pela AWS para o control plane, herdado pelo node group (nenhum dos dois define security_group_ids próprio)"
+  value       = aws_eks_cluster.this.vpc_config[0].cluster_security_group_id
+}

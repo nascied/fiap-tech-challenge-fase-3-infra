@@ -17,3 +17,8 @@ output "aws_elasticache_cluster_cluster_address" {
 output "aws_elasticache_cluster_configuration_endpoint" {
   value = aws_elasticache_cluster.this.configuration_endpoint
 }
+
+output "aws_security_group_id" {
+  description = "Id do security group do Redis"
+  value       = aws_security_group.this.id
+}

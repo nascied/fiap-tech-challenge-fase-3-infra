@@ -89,6 +89,11 @@ output "aws_eks_cluster_platform_version" {
   description = "Versão do cluster EKS"
 }
 
+output "aws_eks_cluster_security_group_id" {
+  value       = module.eks.aws_eks_cluster_security_group_id
+  description = "Security group do cluster EKS (control plane e node group)"
+}
+
 #---------------------------------------
 # Output do registry
 #---------------------------------------
@@ -139,4 +144,9 @@ output "aws_elasticache_cluster_cluster_address" {
 output "aws_elasticache_cluster_configuration_endpoint" {
   value       = module.cache.aws_elasticache_cluster_configuration_endpoint
   description = "Endpoint do elasticache"
+}
+
+output "aws_elasticache_cluster_security_group_id" {
+  value       = module.cache.aws_security_group_id
+  description = "Security group do Redis"
 }
