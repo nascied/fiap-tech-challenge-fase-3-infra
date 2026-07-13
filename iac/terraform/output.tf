@@ -50,13 +50,13 @@ output "aws_db_instance_port" {
 output "aws_db_instance_name" {
   description = "Database name"
   value       = module.db.aws_db_instance_name
-  sensitive   = true
+  sensitive   = false
 }
 
 output "aws_db_instance_master_user" {
   description = "Master username"
   value       = module.db.aws_db_instance_master_user
-  sensitive   = true
+  sensitive   = false
 }
 
 output "aws_db_instance_connection_strings" {
@@ -117,6 +117,21 @@ output "aws_ecr_repository_repository_url" {
 # SQS outputs
 #---------------------
 
+output "sqs_queue_url" {
+  description = "URL da fila SQS"
+  value       = module.sqs.sqs_queue_url
+}
+
+output "sqs_queue_arn" {
+  description = "ARN da fila SQS"
+  value       = module.sqs.sqs_queue_arn
+}
+
+output "sqs_queue_name" {
+  description = "Nome da fila SQS"
+  value       = module.sqs.sqs_queue_name
+}
+
 #----------------------------
 # elasticcache
 #----------------------------
@@ -149,4 +164,23 @@ output "aws_elasticache_cluster_configuration_endpoint" {
 output "aws_elasticache_cluster_security_group_id" {
   value       = module.cache.aws_security_group_id
   description = "Security group do Redis"
+}
+
+#----------------------------
+# DynamoDB
+#----------------------------
+
+output "aws_dynamodb_table_name" {
+  value       = module.dynamodb.aws_dynamodb_table_name
+  description = "Nome da tabela DynamoDB"
+}
+
+output "aws_dynamodb_table_arn" {
+  value       = module.dynamodb.aws_dynamodb_table_arn
+  description = "ARN da tabela DynamoDB"
+}
+
+output "aws_dynamodb_table_id" {
+  value       = module.dynamodb.aws_dynamodb_table_id
+  description = "ID da tabela DynamoDB"
 }
