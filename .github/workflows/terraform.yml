@@ -168,6 +168,59 @@ jobs:
         if: github.event.inputs.action == 'apply'
         run: terraform apply -auto-approve tfplan
 
+      - name: Monta payload dos outputs e notifica o repositório services
+        if: github.event.inputs.action == 'apply'
+        env:
+          SERVICES_REPO_TOKEN: ${{ secrets.SERVICES_REPO_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+          AWS_REGION_VALUE: ${{ secrets.AWS_REGION }}
+        run: |
+          terraform output -json > tf-outputs.json
+
+          # Mapeia cada URL de ECR para o serviço correspondente pelo padrão de nome
+          # "-<serviço-sem-sufixo>-reg" (mais seguro que pegar por posição na lista)
+          ECR_JSON=$(jq -n '
+            ["auth-service","flag-service","targeting-service","evaluation-service","analytics-service"] as $services |
+            (input.aws_ecr_repository_repository_url.value) as $urls |
+            [$services[] as $s | {($s): ($urls[] | select(test("-" + ($s | sub("-service$";"")) + "-reg$")))}] | add
+          ' tf-outputs.json)
+
+          # RDS: ordem da lista é a mesma de rds.rds_properties no tfvars (sob nosso controle)
+          RDS_JSON=$(jq -n '
+            ["auth-service","flag-service","targeting-service"] as $services |
+            (input.aws_db_instance_connection_strings.value) as $conns |
+            [range(0; ($services | length)) as $i | {($services[$i]): $conns[$i]}] | add
+          ' tf-outputs.json)
+
+          SQS_URL=$(jq -r '.sqs_queue_url.value' tf-outputs.json)
+          REDIS_ADDR=$(jq -r '.aws_elasticache_cluster_cluster_address.value' tf-outputs.json)
+          DYNAMO_TABLE=$(jq -r '.aws_dynamodb_table_name.value' tf-outputs.json)
+
+          PAYLOAD=$(jq -n \
+            --argjson ecr "$ECR_JSON" \
+            --argjson rds "$RDS_JSON" \
+            --arg sqs_queue_url "$SQS_URL" \
+            --arg redis_url "redis://${REDIS_ADDR}:6379" \
+            --arg dynamodb_table "$DYNAMO_TABLE" \
+            --arg aws_region "$AWS_REGION_VALUE" \
+            --arg aws_access_key_id "$AWS_ACCESS_KEY_ID" \
+            --arg aws_secret_access_key "$AWS_SECRET_ACCESS_KEY" \
+            --arg aws_session_token "$AWS_SESSION_TOKEN" \
+            '{ecr: $ecr, rds: $rds, sqs_queue_url: $sqs_queue_url, redis_url: $redis_url,
+              dynamodb_table: $dynamodb_table, aws_region: $aws_region,
+              aws_access_key_id: $aws_access_key_id, aws_secret_access_key: $aws_secret_access_key,
+              aws_session_token: $aws_session_token}')
+
+          curl -sS -f -X POST \
+            -H "Authorization: token ${SERVICES_REPO_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/nascied/fiap-tech-challenge-fase-3-services/dispatches \
+            -d "$(jq -n --argjson payload "$PAYLOAD" '{event_type: "infra-outputs-updated", client_payload: $payload}')"
+
+          rm -f tf-outputs.json
+
       - name: Terraform Destroy
         # Somente via workflow_dispatch com branch como fonte da verdade do ambiente
         if: github.event.inputs.action == 'destroy'
