@@ -57,3 +57,9 @@ module "dynamodb" {
 
   depends_on = [module.vpc]
 }
+
+module "argocd" {
+  source = "./modules/argocd"
+
+  depends_on = [module.eks]
+}

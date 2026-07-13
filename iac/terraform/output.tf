@@ -94,6 +94,17 @@ output "aws_eks_cluster_security_group_id" {
   description = "Security group do cluster EKS (control plane e node group)"
 }
 
+output "aws_eks_cluster_name" {
+  value       = module.eks.aws_eks_cluster_name
+  description = "Nome do cluster EKS"
+}
+
+output "aws_eks_cluster_certificate_authority_data" {
+  value       = module.eks.aws_eks_cluster_certificate_authority_data
+  description = "Certificado da autoridade certificadora do cluster EKS (base64)"
+  sensitive   = true
+}
+
 #---------------------------------------
 # Output do registry
 #---------------------------------------
@@ -166,6 +177,7 @@ output "aws_elasticache_cluster_security_group_id" {
   description = "Security group do Redis"
 }
 
+
 #----------------------------
 # DynamoDB
 #----------------------------
@@ -183,4 +195,23 @@ output "aws_dynamodb_table_arn" {
 output "aws_dynamodb_table_id" {
   value       = module.dynamodb.aws_dynamodb_table_id
   description = "ID da tabela DynamoDB"
+}
+
+#----------------------------
+# ArgoCD
+#----------------------------
+
+output "argocd_release_name" {
+  value       = module.argocd.argocd_release_name
+  description = "Nome do release Helm do ArgoCD"
+}
+
+output "argocd_release_namespace" {
+  value       = module.argocd.argocd_release_namespace
+  description = "Namespace onde o ArgoCD foi instalado"
+}
+
+output "argocd_release_status" {
+  value       = module.argocd.argocd_release_status
+  description = "Status do release Helm do ArgoCD"
 }
