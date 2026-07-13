@@ -171,7 +171,7 @@ jobs:
       - name: Monta payload dos outputs e notifica o repositório services
         if: github.event.inputs.action == 'apply'
         env:
-          SERVICES_REPO_TOKEN: ${{ secrets.SERVICES_REPO_TOKEN }}
+          GITOPS_PUSH_TOKEN: ${{ secrets.GITOPS_PUSH_TOKEN }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
@@ -214,7 +214,7 @@ jobs:
               aws_session_token: $aws_session_token}')
 
           curl -sS -f -X POST \
-            -H "Authorization: token ${SERVICES_REPO_TOKEN}" \
+            -H "Authorization: token ${GITOPS_PUSH_TOKEN}" \
             -H "Accept: application/vnd.github+json" \
             https://api.github.com/repos/nascied/fiap-tech-challenge-fase-3-services/dispatches \
             -d "$(jq -n --argjson payload "$PAYLOAD" '{event_type: "infra-outputs-updated", client_payload: $payload}')"
