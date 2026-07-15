@@ -1,4 +1,5 @@
 mock_provider "aws" {}
+mock_provider "helm" {}
 
 variables {
   aws_vpc = {
