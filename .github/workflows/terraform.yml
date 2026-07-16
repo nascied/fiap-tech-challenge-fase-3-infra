@@ -195,7 +195,9 @@ jobs:
           ' tf-outputs.json)
 
           SQS_URL=$(jq -r '.sqs_queue_url.value' tf-outputs.json)
-          REDIS_ADDR=$(jq -r '.aws_elasticache_cluster_cluster_address.value' tf-outputs.json)
+          # cluster_address só é preenchido em modo cluster; aqui é single-node (num_cache_nodes=1),
+          # então o endereço real vem de cache_nodes[0].address
+          REDIS_ADDR=$(jq -r '.aws_elasticache_cluster_cache_nodes.value[0].address' tf-outputs.json)
           DYNAMO_TABLE=$(jq -r '.aws_dynamodb_table_name.value' tf-outputs.json)
 
           PAYLOAD=$(jq -n \
