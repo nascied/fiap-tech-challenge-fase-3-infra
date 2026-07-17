@@ -7,6 +7,7 @@ locals {
     "external-dns",
     "vpc-cni",
     "eks-node-monitoring-agent",
-    "eks-pod-identity-agent"
+    "eks-pod-identity-agent",
+    "aws-ebs-csi-driver"
   ]
 }
