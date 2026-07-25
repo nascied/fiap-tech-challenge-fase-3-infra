@@ -23,6 +23,12 @@ resource "aws_eks_addon" "this" {
   cluster_name = aws_eks_cluster.this.name
   addon_name   = each.value
 
+  configuration_values = lookup(local.aws_eks_add_ons_configuration_values, each.value, null)
+
+  # Exigido pela API do EKS ao definir configuration_values, mesmo quando não há
+  # edição manual prévia nos recursos do add-on.
+  resolve_conflicts_on_update = lookup(local.aws_eks_add_ons_configuration_values, each.value, null) != null ? "OVERWRITE" : null
+
   depends_on = [
     aws_eks_node_group.this
   ]
@@ -36,6 +42,27 @@ resource "aws_launch_template" "this" {
     http_tokens                 = "required"
     http_put_response_hop_limit = 2
   }
+
+  # Eleva o max-pods do kubelet, já que o valor padrão calculado no bootstrap
+  # (tabela estática por tipo de instância) não considera o prefix delegation do CNI.
+  user_data = base64encode(<<-EOT
+    MIME-Version: 1.0
+    Content-Type: multipart/mixed; boundary="BOUNDARY"
+
+    --BOUNDARY
+    Content-Type: application/node.eks.aws
+
+    ---
+    apiVersion: node.eks.aws/v1alpha1
+    kind: NodeConfig
+    spec:
+      kubelet:
+        config:
+          maxPods: 110
+
+    --BOUNDARY--
+  EOT
+  )
 }
 
 resource "aws_eks_node_group" "this" {
