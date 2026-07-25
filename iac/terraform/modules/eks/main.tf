@@ -22,6 +22,20 @@ resource "aws_eks_addon" "this" {
   for_each     = toset(local.aws_eks_add_ons)
   cluster_name = aws_eks_cluster.this.name
   addon_name   = each.value
+
+  depends_on = [
+    aws_eks_node_group.this
+  ]
+}
+
+resource "aws_launch_template" "this" {
+  name_prefix = "${local.resource_prefix_name}-mng-"
+
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 2
+  }
 }
 
 resource "aws_eks_node_group" "this" {
@@ -31,6 +45,11 @@ resource "aws_eks_node_group" "this" {
   subnet_ids      = var.aws_subnet_private_ids
   instance_types  = ["t3.medium"]
   capacity_type   = "ON_DEMAND"
+
+  launch_template {
+    id      = aws_launch_template.this.id
+    version = aws_launch_template.this.latest_version
+  }
 
   scaling_config {
     desired_size = 3
